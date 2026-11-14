@@ -1,7 +1,7 @@
 plugins {
     base
     id("org.springframework.boot") version "4.1.2" apply false
-    kotlin("jvm") version "2.3.20" apply false
+    kotlin("jvm") version "2.4.21" apply false
     id("com.diffplug.spotless") version "8.0.0" apply false
 }
 allprojects {
