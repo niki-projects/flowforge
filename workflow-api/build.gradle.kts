@@ -17,7 +17,7 @@ dependencies {
     testImplementation("org.awaitility:awaitility")
     testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("io.zonky.test:embedded-postgres:2.2.2")
-    testImplementation(enforcedPlatform("io.zonky.test.postgres:embedded-postgres-binaries-bom:17.7.0"))
+    testImplementation(enforcedPlatform("io.zonky.test.postgres:embedded-postgres-binaries-bom:18.6.0"))
 }
 tasks.named("integrationTest") {
     dependsOn(":workflow-api:bootJar", ":workflow-orchestrator:bootJar", ":workflow-worker-java:bootJar", ":workflow-worker-kotlin:bootJar")
