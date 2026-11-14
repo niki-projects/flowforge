@@ -1,0 +1,12 @@
+package dev.flowforge.api;
+
+final class ApiException extends RuntimeException {
+  final int status;
+  final String code;
+
+  ApiException(int status, String code, String message) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Customer onboarding",
+  "description": "Validate, enrich in Kotlin, wait briefly, and return selected fields",
+  "enabled": true,
+  "steps": [
+    {"id":"validate","name":"Validate customer","type":"VALIDATE_JSON","configuration":{"required":["name","email"]},"retryPolicy":{"maxAttempts":1,"initialDelayMs":500},"timeoutMs":5000,"executionOrder":0,"dependencies":[]},
+    {"id":"enrich","name":"Enrich customer","type":"JSON_TRANSFORM","configuration":{"set":{"onboardingStatus":"READY"},"uppercase":["name"]},"retryPolicy":{"maxAttempts":3,"initialDelayMs":500},"timeoutMs":5000,"executionOrder":1,"dependencies":["validate"]},
+    {"id":"delay","name":"Delay notification","type":"DELAY","configuration":{"durationMs":100},"retryPolicy":{"maxAttempts":2,"initialDelayMs":500},"timeoutMs":5000,"executionOrder":2,"dependencies":["enrich"]},
+    {"id":"result","name":"Return public fields","type":"RESULT_OUTPUT","configuration":{"fields":["name","email","onboardingStatus"]},"retryPolicy":{"maxAttempts":1,"initialDelayMs":500},"timeoutMs":5000,"executionOrder":3,"dependencies":["delay"]}
+  ]
+}

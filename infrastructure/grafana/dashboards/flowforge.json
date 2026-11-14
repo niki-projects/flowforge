@@ -1,0 +1,13 @@
+{
+  "uid": "flowforge", "title": "FlowForge Operations", "schemaVersion": 39, "version": 1,
+  "refresh": "10s", "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {"id":1,"title":"Service availability","type":"stat","datasource":{"type":"prometheus","uid":"flowforge-prometheus"},"gridPos":{"x":0,"y":0,"w":8,"h":5},"targets":[{"expr":"up","legendFormat":"{{instance}}","refId":"A"}]},
+    {"id":2,"title":"Active executions","type":"stat","datasource":{"type":"prometheus","uid":"flowforge-prometheus"},"gridPos":{"x":8,"y":0,"w":8,"h":5},"targets":[{"expr":"max(active_workflow_executions)","refId":"A"}]},
+    {"id":3,"title":"Pending task outbox","type":"stat","datasource":{"type":"prometheus","uid":"flowforge-prometheus"},"gridPos":{"x":16,"y":0,"w":8,"h":5},"targets":[{"expr":"max(outbox_pending_events)","refId":"A"}]},
+    {"id":4,"title":"Workflow outcomes / second","type":"timeseries","datasource":{"type":"prometheus","uid":"flowforge-prometheus"},"gridPos":{"x":0,"y":5,"w":12,"h":8},"targets":[{"expr":"sum(rate(workflows_completed_total[5m]))","legendFormat":"Completed","refId":"A"},{"expr":"sum(rate(workflows_failed_total[5m]))","legendFormat":"Failed","refId":"B"}]},
+    {"id":5,"title":"Retries / second","type":"timeseries","datasource":{"type":"prometheus","uid":"flowforge-prometheus"},"gridPos":{"x":12,"y":5,"w":12,"h":8},"targets":[{"expr":"sum(rate(task_retry_total[5m]))","refId":"A"}]},
+    {"id":6,"title":"Mean workflow duration (seconds)","type":"timeseries","datasource":{"type":"prometheus","uid":"flowforge-prometheus"},"gridPos":{"x":0,"y":13,"w":12,"h":8},"targets":[{"expr":"sum(rate(workflow_execution_duration_seconds_sum[5m])) / sum(rate(workflow_execution_duration_seconds_count[5m]))","refId":"A"}]},
+    {"id":7,"title":"Worker failures / second","type":"timeseries","datasource":{"type":"prometheus","uid":"flowforge-prometheus"},"gridPos":{"x":12,"y":13,"w":12,"h":8},"targets":[{"expr":"sum by (code) (rate(worker_task_failure_total[5m]))","legendFormat":"{{code}}","refId":"A"}]}
+  ]
+}

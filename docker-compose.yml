@@ -1,0 +1,178 @@
+name: flowforge
+x-app: &app
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+  mem_limit: 512m
+  cpus: 1.0
+  security_opt:
+    - no-new-privileges:true
+  cap_drop: [ALL]
+  stop_grace_period: 40s
+x-env: &env
+  DATABASE_URL: jdbc:postgresql://postgres:5432/flowforge
+  DATABASE_USER: flowforge
+  DATABASE_PASSWORD: ${DATABASE_PASSWORD:-flowforge-local-database}
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+x-worker-deps: &worker-deps
+  workflow-api:
+    condition: service_healthy
+  kafka-init:
+    condition: service_completed_successfully
+services:
+  postgres:
+    image: postgres:17.7-alpine
+    environment:
+      POSTGRES_DB: flowforge
+      POSTGRES_USER: flowforge
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-flowforge-local-database}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U flowforge -d flowforge"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 384m
+  kafka:
+    image: apache/kafka:4.2.2
+    environment:
+      KAFKA_NODE_ID: 1
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+    volumes: [kafka-data:/var/lib/kafka/data]
+    healthcheck:
+      test: [CMD-SHELL, "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    mem_limit: 1g
+  kafka-init:
+    image: apache/kafka:4.2.2
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: [/bin/bash, /scripts/create-topics.sh]
+    volumes: [./infrastructure/kafka/create-topics.sh:/scripts/create-topics.sh:ro]
+  redis:
+    image: redis:7.4.7-alpine
+    command: [redis-server, --maxmemory, 64mb, --maxmemory-policy, allkeys-lru, --save, '']
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    mem_limit: 96m
+  workflow-api:
+    <<: *app
+    build:
+      context: .
+      args:
+        MODULE: workflow-api
+    environment:
+      <<: *env
+      REDIS_HOST: redis
+      FLOWFORGE_API_KEY: ${FLOWFORGE_API_KEY:-flowforge-local-development-key}
+    ports: [127.0.0.1:8080:8080]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://localhost:8080/actuator/health/readiness]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+  workflow-orchestrator:
+    <<: *app
+    build:
+      context: .
+      args:
+        MODULE: workflow-orchestrator
+    environment: *env
+    depends_on: *worker-deps
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://localhost:8081/actuator/health/readiness]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+  workflow-worker-java:
+    <<: *app
+    build:
+      context: .
+      args:
+        MODULE: workflow-worker-java
+    environment:
+      <<: *env
+      SERVER_PORT: 8082
+    depends_on: *worker-deps
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://localhost:8082/actuator/health/readiness]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+  workflow-worker-kotlin:
+    <<: *app
+    build:
+      context: .
+      args:
+        MODULE: workflow-worker-kotlin
+    environment:
+      <<: *env
+      SERVER_PORT: 8083
+    depends_on: *worker-deps
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://localhost:8083/actuator/health/readiness]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+  prometheus:
+    image: prom/prometheus:v3.8.0
+    volumes: [./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro]
+    environment:
+      FLOWFORGE_API_KEY: ${FLOWFORGE_API_KEY:-flowforge-local-development-key}
+    entrypoint: [/bin/sh, -c]
+    command:
+      - 'printf "%s" "$$FLOWFORGE_API_KEY" > /tmp/api-key; exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.retention.time=7d'
+    mem_limit: 256m
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://localhost:9090/-/healthy]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+  grafana:
+    image: grafana/grafana:12.3.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-flowforge-local-grafana}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+    ports: [127.0.0.1:3000:3000]
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    mem_limit: 256m
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://localhost:3000/api/health]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+volumes:
+  postgres-data:
+  kafka-data:
+  grafana-data:

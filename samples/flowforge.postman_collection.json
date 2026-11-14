@@ -1,0 +1,252 @@
+{
+  "info": {
+    "name": "FlowForge",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Create, start and poll. Cancel/retry require eligible execution states."
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-API-Key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{apiKey}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "apiKey",
+      "value": "flowforge-local-development-key"
+    },
+    {
+      "key": "workflowId",
+      "value": ""
+    },
+    {
+      "key": "executionId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Create workflow",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/workflows",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman workflow\",\n  \"description\": \"Kotlin transformation and Java result output\",\n  \"enabled\": true,\n  \"steps\": [\n    {\n      \"id\": \"transform\",\n      \"name\": \"Enrich in Kotlin\",\n      \"type\": \"JSON_TRANSFORM\",\n      \"configuration\": {\n        \"set\": {\n          \"processed\": true\n        },\n        \"uppercase\": [\n          \"name\"\n        ]\n      },\n      \"retryPolicy\": {\n        \"maxAttempts\": 3,\n        \"initialDelayMs\": 500\n      },\n      \"timeoutMs\": 5000,\n      \"executionOrder\": 0,\n      \"dependencies\": []\n    },\n    {\n      \"id\": \"output\",\n      \"name\": \"Return result\",\n      \"type\": \"RESULT_OUTPUT\",\n      \"configuration\": {},\n      \"retryPolicy\": {\n        \"maxAttempts\": 1,\n        \"initialDelayMs\": 500\n      },\n      \"timeoutMs\": 5000,\n      \"executionOrder\": 1,\n      \"dependencies\": [\n        \"transform\"\n      ]\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Created\", () => pm.response.to.have.status(201)); pm.collectionVariables.set(\"workflowId\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List workflows",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/workflows?page=0&size=20"
+      }
+    },
+    {
+      "name": "Get workflow",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/workflows/{{workflowId}}"
+      }
+    },
+    {
+      "name": "Update workflow",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/workflows/{{workflowId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman workflow\",\n  \"description\": \"Kotlin transformation and Java result output\",\n  \"enabled\": true,\n  \"steps\": [\n    {\n      \"id\": \"transform\",\n      \"name\": \"Enrich in Kotlin\",\n      \"type\": \"JSON_TRANSFORM\",\n      \"configuration\": {\n        \"set\": {\n          \"processed\": true\n        },\n        \"uppercase\": [\n          \"name\"\n        ]\n      },\n      \"retryPolicy\": {\n        \"maxAttempts\": 3,\n        \"initialDelayMs\": 500\n      },\n      \"timeoutMs\": 5000,\n      \"executionOrder\": 0,\n      \"dependencies\": []\n    },\n    {\n      \"id\": \"output\",\n      \"name\": \"Return result\",\n      \"type\": \"RESULT_OUTPUT\",\n      \"configuration\": {},\n      \"retryPolicy\": {\n        \"maxAttempts\": 1,\n        \"initialDelayMs\": 500\n      },\n      \"timeoutMs\": 5000,\n      \"executionOrder\": 1,\n      \"dependencies\": [\n        \"transform\"\n      ]\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Start execution",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/workflows/{{workflowId}}/executions",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"input\": {\n    \"name\": \"Ada\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Accepted\", () => pm.response.to.have.status(202)); pm.collectionVariables.set(\"executionId\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List executions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/executions?page=0&size=20"
+      }
+    },
+    {
+      "name": "Get execution",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/executions/{{executionId}}"
+      }
+    },
+    {
+      "name": "Get steps",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/steps"
+      }
+    },
+    {
+      "name": "Get history",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/events"
+      }
+    },
+    {
+      "name": "Cancel eligible execution",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/cancel"
+      }
+    },
+    {
+      "name": "Retry failed execution",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/retry"
+      }
+    },
+    {
+      "name": "Disable workflow",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/workflows/{{workflowId}}"
+      }
+    }
+  ]
+}
