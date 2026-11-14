@@ -1,9 +1,9 @@
-FROM eclipse-temurin:21-jdk-jammy AS build
+FROM eclipse-temurin:22-jdk-jammy AS build
 WORKDIR /workspace
 COPY . .
 RUN chmod +x gradlew && ./gradlew --no-daemon bootJar
 
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:22-jre-jammy
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 flowforge && useradd --uid 10001 --gid 10001 --no-create-home flowforge
 WORKDIR /app
